@@ -1,151 +1,210 @@
-# NetworkWalks — Week 3: PDF Password Hash Extraction & Dictionary Testing
+
+# NetworkWalks — Week 3: PDF Password Hash Extraction & Dictionary Attacks
 
 **Author:** Kelvin Arigbe  
 **Cohort:** B083  
 **Programme:** NetworkWalks Cybersecurity  
 **Week:** 03  
-**Focus:** PDF password-hash extraction, John the Ripper (JtR), Johnny GUI, and dictionary-based password auditing.
+**Focus:** PDF password-hash extraction, John the Ripper (JtR), and dictionary attacks.
 
-> **Authorization and safety:** Only test PDF files you created or are explicitly authorized to assess. This lab uses a deliberately weak, self-created sample and a tiny wordlist. Do not use these steps against third-party documents, accounts, or data.
+> **Authorization and safety:** Only test PDF files you create yourself or have explicit permission to assess. Do not use this workflow against documents belonging to other people.
 
 ## 1. Objective
 
-Understand how password-protected PDFs expose password-verification data for offline auditing, how a PDF hash is extracted in a John-compatible format, and how John the Ripper tests candidate passwords from a dictionary.
+Understand how password-protected PDF files store password-verification data and how security professionals can assess password strength using John the Ripper.
 
 This exercise practises:
+
 - Confirming that a PDF is password protected.
 - Extracting a PDF hash with `pdf2john`.
 - Preparing a small, controlled wordlist.
 - Running John the Ripper from the command line.
-- Reviewing the result with `john --show` and optionally Johnny.
+- Reviewing results with `john --show` and optionally Johnny GUI.
 - Verifying a recovered lab password against the original test PDF.
 - Explaining the limits of dictionary attacks and the importance of strong passwords.
 
-## 2. Workflow
-
-1. Create a non-sensitive PDF and protect it with a weak lab-only password.
-2. Confirm the PDF prompts for a password.
-3. Extract a John-compatible hash locally using `pdf2john`.
-4. Run John against the hash with the provided small lab wordlist.
-5. Review the result with `john --show`.
-6. Verify the password by opening your own sample PDF.
-7. Optionally repeat using Johnny, the graphical interface for John.
-
-## 3. Tools
+## 2. Tools and Environment
 
 | Tool | Purpose |
 |---|---|
-| John the Ripper Jumbo | Offline password auditing and dictionary testing |
-| `pdf2john` helper | Extract a John-compatible hash from a protected PDF |
-| Johnny | Graphical front-end for John the Ripper |
-| Python 3 | Create/maintain lab helper files |
-| LibreOffice or another PDF creator | Create your own protected test PDF |
-| NetworkWalks Hash Calculator | Optional course demonstration tool; use only with your own test document |
+| Kali Linux | Lab operating system |
+| John the Ripper | Password auditing |
+| pdf2john | Extracting PDF password hashes |
+| Johnny | Optional graphical interface for John |
+| Terminal | Executing commands |
+| Test PDF | Self-created password-protected document |
 
-Official project: https://www.openwall.com/john/  
-Documentation: https://www.openwall.com/john/doc/
+## 3. Lab Preparation
 
-## 4. Create a test PDF
-
-Create a short document containing non-sensitive text, export it as `sample/lab-sample.pdf`, and apply a password you choose solely for this exercise. Add that same lab-only candidate to `wordlists/lab-wordlist.txt`.
-
-Do not use a personal, work, or reused password. The PDF is intentionally kept out of Git so that this repository contains no protected document or recovered secret.
-
-## 5. Extract the PDF hash
-
-Use the `pdf2john` helper supplied with your John the Ripper **Jumbo** installation. The helper's filename and path vary by operating system and package.
-
-Linux/Kali example (adjust the helper path to your installation):
+Create a dedicated workspace:
 
 ```bash
-python3 /path/to/pdf2john.py sample/lab-sample.pdf > output/pdf.hash
+mkdir -p ~/networkwalks-week3/{sample,hashes,wordlists,output}
+cd ~/networkwalks-week3
 ```
 
-Windows PowerShell example (adjust the path and script name to the helper in your Jumbo package):
+Create a password-protected PDF that you own. Use a temporary lab password that is not used for any real account.
 
-```powershell
-python .\run\pdf2john.py .\sample\lab-sample.pdf | Out-File -Encoding ascii .\output\pdf.hash
-```
+Confirm that the PDF is password protected by attempting to open it.
 
-Check that the output file is non-empty:
+## 4. Check John the Ripper Installation
+
+Run:
 
 ```bash
-ls -l output/pdf.hash
+john --version
 ```
 
-Treat extracted hashes as sensitive. Do not commit or publish the hash, especially if it relates to a real document.
+If John is not installed:
 
-## 6. Prepare the controlled wordlist
+```bash
+sudo apt update
+sudo apt install john -y
+```
 
-The repository includes a tiny illustrative wordlist at `wordlists/lab-wordlist.txt`. Add the weak lab-only password chosen for your own PDF. Keep the list small: the learning goal is to understand the process, not to run large-scale cracking.
+Check the installation:
+
+```bash
+john --list=formats | grep -i pdf
+```
+
+PDF support depends on the installed John build.
+
+## 5. Extract the PDF Hash
+
+Locate the `pdf2john` utility. Depending on your installation, it may be named `pdf2john` or `pdf2john.pl`.
+
+Example:
+
+```bash
+pdf2john sample/test.pdf > hashes/pdf_hash.txt
+```
+
+If the utility is not in your PATH, locate it:
+
+```bash
+find /usr/share/john -iname '*pdf2john*' 2>/dev/null
+```
+
+Use the path returned by the command to run the utility.
+
+Inspect the output:
+
+```bash
+cat hashes/pdf_hash.txt
+```
+
+The extracted hash is sensitive lab material. Do not publish it or commit it to GitHub.
+
+## 6. Prepare a Controlled Wordlist
+
+Create a small wordlist containing only the temporary password you assigned to your test PDF and a few deliberately incorrect examples.
+
+```bash
+nano wordlists/lab-wordlist.txt
+```
+
+Save the file, then inspect it:
+
+```bash
+cat wordlists/lab-wordlist.txt
+```
+
+Do not use leaked password databases or passwords belonging to other people.
 
 ## 7. Run John the Ripper
 
+Run a dictionary attack against your extracted lab hash:
+
 ```bash
-john --wordlist=wordlists/lab-wordlist.txt output/pdf.hash
-john --show output/pdf.hash
+john --wordlist=wordlists/lab-wordlist.txt hashes/pdf_hash.txt
 ```
 
-If John rejects the extracted hash, check that you used the helper from a compatible Jumbo installation and that its output was written without formatting changes. Consult the John documentation for version-specific hash formats.
+Check the results:
 
-## 8. Johnny GUI (optional)
+```bash
+john --show hashes/pdf_hash.txt
+```
 
-1. Open Johnny and confirm it can locate the John executable.
-2. Load the hash file generated from your own protected test PDF.
-3. Start a new dictionary attack.
-4. Select the small lab wordlist.
-5. Start the test and review the status/results.
-6. Use the result only to verify the password for your own sample PDF.
+If the password is present in your controlled wordlist and the PDF format is supported, John may recover it.
 
-Johnny's labels and menus can vary by version. Do not load real user credential dumps or third-party files.
+If the password is not present, the dictionary attack may fail. That is an important result: dictionary attacks depend on the candidates available.
 
-## 9. Verify
+## 8. Optional: Johnny GUI
 
-Open `sample/lab-sample.pdf` and enter the lab password reported by John. Record whether the document opens. A successful match only shows that this candidate existed in the supplied wordlist; it does not mean dictionary attacks can recover every password.
+Johnny provides a graphical interface for John the Ripper.
+
+General workflow:
+
+1. Open Johnny.
+2. Load the extracted PDF hash file.
+3. Select the wordlist.
+4. Start the password audit.
+5. Review the result.
+
+The exact interface and available options depend on the installed version.
+
+## 9. Verify the Result
+
+If John reports a recovered password:
+
+1. Open your original test PDF.
+2. Enter the recovered lab password.
+3. Confirm that the document opens successfully.
+4. Compare the result with John's `--show` output.
+
+Do not claim successful recovery unless you have verified it against your own test PDF.
 
 ## 10. Troubleshooting
 
-| Symptom | Checks |
+| Problem | Possible explanation |
 |---|---|
-| `pdf2john` not found | Confirm a Jumbo build is installed and locate its helper script. |
-| John rejects the hash | Re-extract using the matching helper and inspect the generated format. |
-| No password found | Confirm the hash belongs to your sample PDF and the lab candidate is in the wordlist. |
-| Johnny cannot find John | Set the John executable path in Johnny's settings. |
-| PDF does not open | Confirm you are testing the same PDF and enter the recovered lab password carefully. |
+| `john: command not found` | John is not installed or is not in PATH |
+| `pdf2john: command not found` | Utility is located elsewhere or has a different name |
+| No password recovered | Candidate password is not in the wordlist |
+| Unsupported hash format | Installed John build may lack the required PDF format |
+| Empty hash file | Extraction command or PDF path may be incorrect |
+| Permission denied | Check file permissions and directory access |
 
-## 11. Security observations
+## 11. Security Observations
 
-- Dictionary attacks test likely candidate passwords against an extracted hash; they do not automatically decrypt every protected document.
-- Long, unique, unpredictable passwords are harder to guess than common words and predictable substitutions.
-- PDF encryption method and configuration also affect security.
-- Extracted hashes and recovered passwords should be handled as sensitive information.
-- Use a password manager to generate and store unique passwords.
+- Password-protected documents should use strong, unique passwords.
+- Short and predictable passwords are more vulnerable to dictionary attacks.
+- A dictionary attack only tests the candidates supplied to it.
+- A failed dictionary attack does not prove that a password is secure.
+- Sensitive hashes and recovered passwords should be protected.
+- Organizations should establish policies for document encryption and password management.
 
-## 12. Evidence checklist
+## 12. Evidence Checklist
 
-Add screenshots from your own lab to `evidence/` after checking them for secrets and personal information:
+Add your own screenshots to the `evidence/` directory.
 
-- [ ] John/Johnny installation and executable configuration.
-- [ ] Your test PDF showing a password prompt (do not show the password).
-- [ ] Hash extraction process (redact the hash value).
-- [ ] John dictionary test running against the lab hash.
-- [ ] `john --show` result (redact the recovered password).
-- [ ] Successful opening of your own test PDF (redact the password).
+Suggested evidence:
 
-See `evidence/README.md` for naming and redaction guidance.
+- [ ] John the Ripper installation and version.
+- [ ] Password-protected test PDF.
+- [ ] Successful PDF hash extraction.
+- [ ] Controlled wordlist.
+- [ ] John the Ripper dictionary attack.
+- [ ] `john --show` output.
+- [ ] Successful verification of the test PDF.
 
-## 13. What I learned
+Before uploading screenshots, redact passwords, extracted hashes, personal information, and unrelated documents.
 
-This lab connects file protection, password-hash extraction, and offline password auditing into one repeatable workflow. I practised both command-line and GUI-based use of John the Ripper, interpreted its output, and documented the limits of dictionary-based testing. The key takeaway is that password strength and uniqueness directly affect resistance to guessing attacks.
+## 13. Lessons Learned
+
+This exercise demonstrates how password-protected PDF files can be assessed through hash extraction and controlled dictionary attacks.
+
+It also highlights why password complexity, uniqueness, and secure document-handling practices matter.
+
+The outcome of a dictionary attack depends on the quality of the candidate wordlist and the password being tested.
 
 ## 14. References
 
-- John the Ripper: https://www.openwall.com/john/
-- John the Ripper documentation: https://www.openwall.com/john/doc/
-- NetworkWalks Hash Calculator: https://networkwalks.com/hash-calculator/
+- [John the Ripper — Official Website](https://www.openwall.com/john/)
+- [John the Ripper — Documentation](https://www.openwall.com/john/doc/)
+- [Kali Linux Tools — John](https://www.kali.org/tools/john/)
 
 ---
 
-**Project:** NetworkWalks Cybersecurity — Week 03  
-**Author:** Kelvin Arigbe  
-**Cohort:** B083
+**NetworkWalks | Week 03 | B083 | Kelvin Arigbe**
