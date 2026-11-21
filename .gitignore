@@ -1,0 +1,11 @@
+# Local test artefacts and secrets
+sample/*.pdf
+output/*
+!output/.gitkeep
+*.hash
+*.pot
+*.rec
+*.log
+# Keep only this placeholder wordlist in Git; ignore custom lists
+wordlists/*
+!wordlists/lab-wordlist.txt
